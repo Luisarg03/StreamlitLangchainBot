@@ -1,4 +1,5 @@
 # Importar las bibliotecas necesarias
+import streamlit as st
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.document_loaders import PDFMinerLoader
@@ -30,8 +31,8 @@ pdf_name = 'IA.pdf'
 llm = ChatOpenAI(
     api_key=api_key,
     model="gpt-3.5-turbo",
-    temperature=0,
-    timeout=10,
+    temperature=0.8,
+    timeout=20,
     max_retries=1
 )
 
@@ -47,19 +48,6 @@ cached_embedder = CacheBackedEmbeddings.from_bytes_store(
 # #####################################
 # # FASE 1 - PREPARACION DEL CONTEXTO #
 # #####################################
-# # Crear una plantilla de prompt para el modelo
-prompt = ChatPromptTemplate.from_template('''
-    Responde en español y basado en el contexto provisto desde el documento:
-
-    <context>
-    {context}
-    </context>
-
-    Question: {input}''')
-
-# # Crear una cadena de documentos usando la plantilla de prompt y el modelo LLM
-document_chain = create_stuff_documents_chain(llm, prompt)
-# # FASE 1 FIN - Preparar el contexto
 
 # # SEGMENTACION DE DOCUMENTOS
 # # Cargar el documento PDF y dividirlo en partes manejables
@@ -79,14 +67,11 @@ documents = text_splitter.split_documents(data)
 # # OBTENER EMBEDDINGS DE LOS DOCUMENTOS
 # # Obtener los embeddings para los documentos segmentados y almacenarlos en un índice vectorial
 vector = FAISS.from_documents(documents, cached_embedder)
-
+retriever = vector.as_retriever()
 
 # # CREAR CADENA DE RECUPERACION Y RESPUESTA
 # # Crear un recuperador a partir del índice vectorial y una cadena de recuperación usando la cadena de documentos
-retriever = vector.as_retriever()
-retrieval_chain = create_retrieval_chain(retriever, document_chain)
-
-# # Crear una cadena de recuperación que tenga en cuenta el historial de la conversación
+# # Crear una cadena de recuperación que tenga en cuenta el historial de la conversación...
 history_prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="chat_history"),
     ("user", "{input}"),
@@ -95,9 +80,14 @@ history_prompt = ChatPromptTemplate.from_messages([
 
 retriever_chain = create_history_aware_retriever(llm, retriever, history_prompt)
 
-# # Crear la cadena de documentos considerando el historial
+# # Crear la cadena de documentos considerando el historial y dandole un toque felino
 document_prompt = ChatPromptTemplate.from_messages([
-    ("system", "Answer the user's questions based on the below context:\n\n{context}"),
+    ("system", '''
+    Sos un gato asistente, respondes todas las frases terminando con un "miau!!".
+    Eres un gato amigable, cordial y gracioso, y respondes en español basándote en el contexto provisto desde el documento.
+    Asegúrate de que tus respuestas sean útiles y tengan un toque de humor y calidez felina.
+    Answer the user's questions based on the below context:\n\n{context}
+    '''),
     MessagesPlaceholder(variable_name="chat_history"),
     ("user", "{input}"),
 ])
@@ -126,14 +116,38 @@ def chat_with_history(retrieval_chain, user_input, chat_history=[]):
 chat_history = []
 
 
-# #################
-# # FASE 3 - TEST #
-# #################
-# # Bucle para manejar la interacción con el usuario
-while True:
-    user_input = input("Tu pregunta: ")
-    if user_input.lower() in ["exit", "salir"]:
-        print("Terminando la conversación.")
-        break
-    answer, chat_history = chat_with_history(retrieval_chain, user_input, chat_history)
-    print(f"AI: {answer}\n")
+# # #################
+# # # FASE 3 - TEST #
+# # #################
+# # # Bucle para manejar la interacción con el usuario
+# while True:
+#     user_input = input("Tu pregunta: ")
+#     if user_input.lower() in ["exit", "salir"]:
+#         print("Terminando la conversación.")
+#         break
+#     answer, chat_history = chat_with_history(retrieval_chain, user_input, chat_history)
+#     print(f"AI: {answer}\n")
+
+# ################
+# # FASE 3 - UI  #
+# ################
+
+with st.sidebar:
+    "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/Luisarg03/StreamlitLangchainBot)"
+
+st.image("./img/logo_cat.png", width=200)
+st.title("💬 SAMI")
+st.caption("🚀 A Streamlit chatbot powered by OpenAI")
+
+if "messages" not in st.session_state:
+    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+
+for msg in st.session_state.messages:
+    st.chat_message(msg["role"]).write(msg["content"])
+
+if prompt := st.chat_input():
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    st.chat_message("user").write(prompt)
+    response, chat_history = chat_with_history(retrieval_chain, prompt, chat_history)
+    st.session_state.messages.append({"role": "assistant", "content": response})
+    st.chat_message("assistant").write(response)
