@@ -125,5 +125,3 @@ Si tienes sugerencias o mejoras, no dudes en hacer un fork de este repositorio y
 
 Este proyecto está licenciado bajo los términos de la licencia MIT. Consulta el archivo `LICENSE` para obtener más información.
 ```
-
-Este archivo `README.md` proporciona una descripción clara de tu proyecto, instrucciones de configuración y uso, y detalles sobre cómo contribuciones pueden ser realizadas.
