@@ -124,4 +124,3 @@ Si tienes sugerencias o mejoras, no dudes en hacer un fork de este repositorio y
 ## Licencia
 
 Este proyecto está licenciado bajo los términos de la licencia MIT. Consulta el archivo `LICENSE` para obtener más información.
-```

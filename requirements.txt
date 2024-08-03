@@ -5,3 +5,4 @@ langchain-community == 0.2.11
 python-dotenv == 1.0.1
 beautifulsoup4 == 4.12.3
 faiss-cpu == 1.8.0.post1
+pdfminer.six == 20240706
