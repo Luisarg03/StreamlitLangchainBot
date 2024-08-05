@@ -11,6 +11,8 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains import create_retrieval_chain, create_history_aware_retriever
 from langchain_core.messages import HumanMessage, AIMessage
 
+from langchain_community.document_loaders import WikipediaLoader
+
 from dotenv import load_dotenv
 import os
 
@@ -42,6 +44,7 @@ cached_embedder = CacheBackedEmbeddings.from_bytes_store(
     embeddings, store, namespace=embeddings.model
 )
 
+wikipedia = WikipediaLoader
 # #####################################
 # # FASE 1 - PREPARACION DEL CONTEXTO #
 # #####################################
@@ -80,7 +83,7 @@ retriever_chain = create_history_aware_retriever(llm, retriever, history_prompt)
 # Crear la cadena de documentos considerando el historial y dandole un toque felino
 document_prompt = ChatPromptTemplate.from_messages([
     ("system", '''
-    Sos un gato asistente, respondes todas las frases terminando con un "miau!!".
+    Sos un gato asistente.
     Eres un gato amigable, cordial y gracioso, y respondes en español basándote en el contexto provisto desde el documento.
     Asegúrate de que tus respuestas sean útiles y tengan un toque de humor y calidez felina.
     Responda las preguntas del usuario según el siguiente contexto
@@ -132,6 +135,50 @@ for msg in st.session_state.messages:
 if prompt := st.chat_input():
     st.session_state.messages.append({"role": "user", "content": prompt})
     st.chat_message("user").write(prompt)
-    response, st.session_state["chat_history"] = chat_with_history(retrieval_chain, prompt, st.session_state["chat_history"])
-    st.session_state.messages.append({"role": "assistant", "content": response})
-    st.chat_message("assistant").write(response)
+
+    if "wikipedia" in prompt.lower():
+        response, st.session_state["chat_history"] = chat_with_history(retrieval_chain, prompt, st.session_state["chat_history"])
+        prompt = prompt.lower().replace("wikipedia", "")
+        st.chat_message("assistant").write("Un momento, busco informacion en Wikipedia...🐱✨")
+
+        messages = [
+            (
+                "system",
+                "Extrae del texto el concepto, idea o palabra a buscar, para generar una palabra o frase clave para buscar en motores de busqueda"
+            ),
+            ("human", f"{prompt}")
+        ]
+
+        concept = llm.invoke(messages).content
+
+        print(concept)
+
+        wikipedia_result = wikipedia(query=concept, load_max_docs=2, lang="es", doc_content_chars_max=3000).load()
+
+        wiki_messages = [
+            (
+                "system",
+                '''
+                Eres un exeperto resumiendo textos.
+                Desglosas los conceptos más importantes y los presentas de manera clara y concisa.
+                Si es necesario, en tu criterio, agregas ejemplos simples y claros para ilustrar los conceptos complejos.
+                Si el resultado no coincide con la consulta, simplemente ignora la consulta.
+                '''
+            ),
+            ("human", f"{wikipedia_result}")
+        ]
+
+        wiki_response = llm.invoke(wiki_messages).content
+
+        for i in wikipedia_result:
+            link = i.metadata['source']
+            wiki_response = wiki_response + f"\n\nFuente: {link}"
+
+        st.session_state.messages.append({"role": "assistant", "content": wiki_response})
+
+        st.chat_message("assistant").write(wiki_response)
+
+    else:
+        response, st.session_state["chat_history"] = chat_with_history(retrieval_chain, prompt, st.session_state["chat_history"])
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.chat_message("assistant").write(response)
