@@ -28,4 +28,4 @@ if __name__ == "__main__":
     # # Crea cadena final de recuperación, combinando el historial de chat y la personalidad
     retrieval_chain = create_retrieval_chain(history_prompt, personality)
 
-    generate_ui(retrieval_chain)
+    generate_ui(llm, retrieval_chain)

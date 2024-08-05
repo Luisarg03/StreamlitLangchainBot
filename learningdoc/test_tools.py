@@ -1,8 +1,28 @@
-from langchain_community.document_loaders import WikipediaLoader
+import os
+from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage
+from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
+from dotenv import load_dotenv
+import os
 
-docs = WikipediaLoader(query="que es un motor plano", load_max_docs=2, lang="es", doc_content_chars_max=5000).load()
+# ##########################
+# # FASE 0 - Configuración #
+# ##########################
 
-b = docs[0].page_content  # a content of the Document
-for i in docs:
-    print(i.metadata['source'])
+# Cargar variables de entorno
+load_dotenv()
+api_key = os.getenv("API_KEY")  # FOR OpenAIEmbeddings Method
+os.environ["OPENAI_API_KEY"] = api_key  # FOR ChatOpenAI Method
 
+llm = ChatOpenAI(
+    openai_api_key=api_key,
+    temperature=0.0,
+    model_name="gpt-3.5-turbo",
+    streaming=True,  # ! important
+    callbacks=[StreamingStdOutCallbackHandler()]  # ! important
+)
+
+# create messages to be passed to chat LLM
+messages = [HumanMessage(content="tell me a long story")]
+
+print(llm.invoke(messages))
