@@ -1,21 +1,31 @@
-from openai import OpenAI
-import streamlit as st
+import os
+from dotenv import load_dotenv
+from langchain.chains import create_retrieval_chain
 
-with st.sidebar:
-    "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/Luisarg03/StreamlitLangchainBot)"
+from modules.confs import load_config
+from modules.model import init_model
+from modules.embedder import init_embedder
+from modules.document_processing import pdf_spliter
+from modules.generate_vectors import generate_documents_vectors
+from modules.personality import personalitybot
+from modules.history_prompt import generate_prompt_history
+from modules.UI import generate_ui
 
+# CONFS APP
+load_dotenv()
+api_key = os.getenv("API_KEY")
+os.environ["OPENAI_API_KEY"] = api_key
+configs = load_config()
 
-st.image("./img/logo_cat.png", width=200)
-st.title("💬 SAMI") 
-st.caption("🚀 A Streamlit chatbot powered by OpenAI")
-if "messages" not in st.session_state:
-    st.session_state["messages"] = [{"role": "assistant", "content": "How can I help you?"}]
+if __name__ == "__main__":
+    llm = init_model(api_key=api_key, **configs['modelapi'])
+    embedder = init_embedder(api_key=api_key)
+    pdf_spliter = pdf_spliter(configs['pdfs'])
+    retriever = generate_documents_vectors(pdf_spliter, embedder)
+    personality = personalitybot(llm, configs['assistantconf'])
+    history_prompt = generate_prompt_history(llm, retriever)
 
-for msg in st.session_state.messages:
-    st.chat_message(msg["role"], avatar='🐱').write(msg["content"])
+    # # Crea cadena final de recuperación, combinando el historial de chat y la personalidad
+    retrieval_chain = create_retrieval_chain(history_prompt, personality)
 
-if prompt := st.chat_input():
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    st.chat_message("user").write(prompt)
-    st.session_state.messages.append({"role": "assistant", "content": msg})
-    st.chat_message("assistant", avatar='🐱').write(msg)
+    generate_ui(retrieval_chain)

@@ -1,0 +1,23 @@
+{
+    "modelapi": {
+        "model": "gpt-3.5-turbo",
+        "temperature": 0.8,
+        "timeout": 15,
+        "max_retries": 1
+    },
+    "pdfs": {
+        "names": ["IA", "IA_V2"]
+    },
+    "assistantconf": {
+        "name": "SAM",
+        "description": "Gato asistente",
+        "language": "español",
+        "personality": ["amigable", "cordial", "gracioso"],
+        "other": [
+            "puede hacer chistes", 
+            "puede contar historias", 
+            "puede hacer preguntas",
+            "Tiene un toque de calidez felina"
+        ]
+    }
+}
