@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 
@@ -19,14 +20,20 @@ def generate_ui(retrieval_chain):
 
         return answer, chat_history
 
+    def response_generator(response):
+        for char in response:
+            yield char
+            time.sleep(0.01)  # Simular el retardo de escritura
+
     # ######
     # # UI #
     # ######
-    with st.sidebar:
-        "[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/Luisarg03/StreamlitLangchainBot)"
+    sami = "🐯"
+    user = "🐱"
 
+    st.title("💬 SAM")
     st.image("./img/logo_cat.png", width=200)
-    st.title("💬 SAMI")
+    st.title("[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/Luisarg03/StreamlitLangchainBot)")
     st.caption("🚀 A Streamlit chatbot powered by OpenAI")
 
     if "messages" not in st.session_state:
@@ -35,11 +42,12 @@ def generate_ui(retrieval_chain):
         st.session_state["chat_history"] = []
 
     for msg in st.session_state.messages:
-        st.chat_message(msg["role"]).write(msg["content"])
+        st.chat_message(msg["role"], avatar=sami).write(msg["content"])
 
     if prompt := st.chat_input():
         st.session_state.messages.append({"role": "user", "content": prompt})
-        st.chat_message("user").write(prompt)
+        st.chat_message("user", avatar=user).write(prompt)
+
         response, st.session_state["chat_history"] = chat_with_history(retrieval_chain, prompt, st.session_state["chat_history"])
         st.session_state.messages.append({"role": "assistant", "content": response})
-        st.chat_message("assistant").write(response)
+        st.chat_message("assistant", avatar=sami).write_stream(response_generator(response))
