@@ -12,7 +12,6 @@ def personalitybot(llm, config):
         Responda las preguntas del usuario según el siguiente contexto
         '''
     prompt = atributies + '''
-        Responda las preguntas del usuario según el siguiente contexto
         \n\n
         {context}
         '''
