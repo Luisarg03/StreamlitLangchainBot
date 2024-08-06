@@ -56,6 +56,10 @@ SAMI is a chatbot developed with Streamlit, LangChain, and OpenAI, designed to p
 2. **Pdfs:** By default, the documents passed as context are located in the *./pdfs* folder.
 3. **Interaction:** Enter your questions or comments in the chat interface, and SAM will respond with personalized answers.
 
+# Diagrams
+
+<img src="./docs/img/ChatBotArq.png"></img>
+
 ## License
 
 This project is licensed under the MIT License. See the LICENSE file for more details.
