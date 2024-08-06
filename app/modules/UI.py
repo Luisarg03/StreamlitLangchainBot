@@ -1,8 +1,8 @@
-import time
+import re
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from langchain_core.output_parsers import StrOutputParser
 from langchain_community.document_loaders import WikipediaLoader
+from langchain_community.tools import YouTubeSearchTool
 
 
 def generate_ui(llm, retrieval_chain):
@@ -41,13 +41,38 @@ def generate_ui(llm, retrieval_chain):
                 Desglosas los conceptos más importantes y los presentas de manera clara y concisa.
                 Si es necesario, en tu criterio, agregas ejemplos simples y claros para ilustrar los conceptos complejos.
                 Si el resultado no coincide con la consulta realizada, simplemente ignora la consulta y di "lo siento, la busqueda no arrojo resultados"
-                Complementa los resultados con tu conocimiento
+                Complementa los resultados con tu conocimiento del tema en cuestion
                 '''
             ),
             ("human", f"{wikipedia_result}")
         ]
 
         return llm.stream(wiki_messages) , urls
+
+    def context_youtube(llm, retrieval_chain, prompt, chat_history):
+        chat_history.append(HumanMessage(content=prompt))
+        prompt = prompt.lower().replace("youtube", "")
+
+        response = retrieval_chain.invoke({"chat_history": chat_history, "input": prompt})
+
+        concept_messages = [
+            (
+                "system",
+                '''Extrae del texto el concepto, idea o palabras claves.
+                Genera una frase clave para buscar en motores de busqueda.
+                La frase sera extremaente simple y clara para que el motor de busqueda pueda encontrar resultados precisos.
+                Dispondras de los links proporcionados por el motor de busqueda para compartir con el usuario.
+                '''
+            ),
+            ("human", f"{response}")
+        ]
+
+        concept = llm.invoke(concept_messages).content
+        youtubetool = YouTubeSearchTool()
+        results = youtubetool.run(f'''{concept},  5''')
+        results = results.split(',')
+
+        return results
 
     def get_response(retrieval_chain, user_input, chat_history):
         chat_history.append(HumanMessage(content=user_input))
@@ -68,7 +93,7 @@ def generate_ui(llm, retrieval_chain):
     st.title("💬 SAM")
     st.image("./img/logo_cat.png", width=200)
     st.title("[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://github.com/Luisarg03/StreamlitLangchainBot)")
-    st.caption("🚀 A Streamlit chatbot powered by OpenAI, Wikipedia")
+    st.caption("🚀 A Streamlit chatbot powered by OpenAI, Wikipedia and Youtube")
 
     if "messages" not in st.session_state:
         st.session_state["messages"] = [{"role": "assistant", "content": "En que puedo ayudar hoy?"}]
@@ -84,13 +109,29 @@ def generate_ui(llm, retrieval_chain):
 
         if "wikipedia" in prompt.lower():
             with st.chat_message("assistant", avatar=sami):
-                st.write("Un momento, busco informacion en Wikipedia...🐱✨")
+                st.write("Un momento, busco informacion en Wikipedia...🐱📖✨")
 
                 response = context_wikipedia(llm, prompt, st.session_state["chat_history"])
                 urls, response = st.write_stream(response)
 
                 st.session_state["messages"].append({"role": "assistant", "content": response})
                 st.session_state["chat_history"].append(AIMessage(content=response))
+
+        elif "youtube" in prompt.lower():
+            with st.chat_message("assistant", avatar=sami):
+                st.write("Un momento, busco videos en YouTube...🐱✨▶️")
+
+                pattern = r"[\'\[\]]"
+                urls = context_youtube(llm, retrieval_chain, prompt, st.session_state["chat_history"])
+                s = ''
+
+                st.session_state["messages"].append({"role": "assistant", "content": urls})
+
+                for i in urls:
+                    s += "- " + re.sub(pattern, '', i) + "\n"
+                st.markdown(s)
+
+                st.session_state["chat_history"].append(AIMessage(content=s))
 
         else:
             with st.chat_message("assistant", avatar=sami):
